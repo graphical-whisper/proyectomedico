@@ -13,24 +13,31 @@ export const pool = new Pool({
   database: process.env.DB_NAME || 'hospital_consultas_db',
   max: 20,
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 3000,
+  connectionTimeoutMillis: 5000,
 });
 
 let isDbConnected = false;
 
-export async function testConnection(): Promise<boolean> {
-  try {
-    const client = await pool.connect();
-    isDbConnected = true;
-    client.release();
-    console.log('Conexion a PostgreSQL establecida correctamente en ' + (process.env.DB_NAME || 'hospital_consultas_db'));
-    return true;
-  } catch (error: any) {
-    isDbConnected = false;
-    console.warn('Aviso: No se pudo conectar a PostgreSQL local (' + error.message + ').');
-    console.warn('El backend operara con repositorio de contingencia en memoria para catalogos y consultas.');
-    return false;
+export async function testConnection(retries: number = 3): Promise<boolean> {
+  for (let i = 0; i < retries; i++) {
+    try {
+      const client = await pool.connect();
+      isDbConnected = true;
+      client.release();
+      console.log('Conexion a PostgreSQL establecida correctamente en ' + (process.env.DB_NAME || 'hospital_consultas_db'));
+      return true;
+    } catch (error: any) {
+      if (i < retries - 1) {
+        await new Promise((res) => setTimeout(res, 800));
+        continue;
+      }
+      isDbConnected = false;
+      console.warn('Aviso: No se pudo conectar a PostgreSQL local (' + error.message + ').');
+      console.warn('El backend operara con repositorio de contingencia en memoria para catalogos y consultas.');
+      return false;
+    }
   }
+  return false;
 }
 
 export function getDbConnectionStatus(): boolean {

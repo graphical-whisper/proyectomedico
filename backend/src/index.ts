@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import { ensureLocalPostgres } from './config/embeddedPg.js';
 import { testConnection, getDbConnectionStatus } from './config/database.js';
 import { initializeDatabaseSchema } from './repositories/initDb.js';
 import catalogRoutes from './routes/catalogRoutes.js';
@@ -32,6 +33,9 @@ app.get('/api/salud', (_req, res) => {
 async function startServer() {
   console.log('Iniciando servidor de Interconsultas Medicas...');
   
+  // Garantizar que PostgreSQL local este activo y escuchando
+  await ensureLocalPostgres();
+
   const connected = await testConnection();
   if (connected) {
     try {
