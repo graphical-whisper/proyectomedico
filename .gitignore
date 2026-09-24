@@ -62,6 +62,8 @@ desktop.ini
 *.swo
 
 # Bases de datos locales o respaldos
+data/
+backend/data/
 *.sqlite
 *.sqlite3
 *.db
