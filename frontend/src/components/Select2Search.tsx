@@ -3,7 +3,7 @@ import { CatalogItem } from '../types/consultation.js';
 import { searchCatalog, addCustomCatalogItem } from '../services/api.js';
 
 interface Select2SearchProps {
-  category: 'alergia' | 'medicamento' | 'diagnostico' | 'motivo_consulta' | 'antecedente' | 'hallazgo_examen';
+  category: CatalogItem['category'];
   placeholder?: string;
   isMulti?: boolean;
   values?: string[]; // for multi

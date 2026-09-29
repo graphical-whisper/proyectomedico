@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
-import { InpatientConsultation } from './types/consultation.js';
+import { InpatientConsultation, MedicalEvolution } from './types/consultation.js';
 import { WizardProgress } from './components/WizardProgress.js';
 import { Step1GeneralHistory } from './components/Step1GeneralHistory.js';
 import { Step2PhysicalExam } from './components/Step2PhysicalExam.js';
 import { Step3Plan } from './components/Step3Plan.js';
+import { MedicalEvolutionWizard } from './components/MedicalEvolutionWizard.js';
 import { PrintableSummary } from './components/PrintableSummary.js';
 import { saveConsultation, previewSummary, checkServerHealth } from './services/api.js';
 
-const LOCAL_STORAGE_KEY = 'inpatient_consult_draft_v1';
+const LOCAL_STORAGE_CONSULT_KEY = 'inpatient_consult_draft_v2';
+const LOCAL_STORAGE_EVOLUTION_KEY = 'medical_evolution_draft_v2';
 
 function getInitialFormState(): InpatientConsultation {
   const now = new Date();
@@ -16,8 +18,7 @@ function getInitialFormState(): InpatientConsultation {
   const minutes = String(now.getMinutes()).padStart(2, '0');
   const timeStr = `${hours}:${minutes}`;
 
-  // Verificar si hay borrador previo en LocalStorage
-  const savedDraft = localStorage.getItem(LOCAL_STORAGE_KEY);
+  const savedDraft = localStorage.getItem(LOCAL_STORAGE_CONSULT_KEY);
   if (savedDraft) {
     try {
       return JSON.parse(savedDraft);
@@ -29,9 +30,14 @@ function getInitialFormState(): InpatientConsultation {
   return {
     patientName: '',
     patientIdNumber: '',
+    age: '',
+    biologicalSex: 'M',
+    entity: 'Particular',
+    originCity: 'Bucaramanga',
+    occupation: '',
     date: dateStr,
     time: timeStr,
-    visitType: 'consult',
+    visitType: 'initial_visit',
     requestingPhysician: '',
 
     nkda: false,
@@ -76,20 +82,59 @@ function getInitialFormState(): InpatientConsultation {
     pastMedicalSurgical: {
       unableToObtain: false,
       nonContributory: false,
+      fixedPathologies: {
+        htaCronica: false,
+        hipoTa: false,
+        dmnid: false,
+        hipoglicemia: false,
+        dislipidemia: false,
+        problemasTiroides: false,
+        asma: false,
+        epoc: false,
+        erc: false,
+        cardiopatiaIsquemica: false,
+        obesidad: false,
+        cancer: false
+      },
       conditions: [],
-      surgicalHistory: ''
+      surgicalHistory: '',
+      toxicHistory: '',
+      traumaticHistory: '',
+      hospitalHistory: '',
+      transfusionHistory: { hasTransfusions: false, bloodType: 'No determinado' },
+      pharmacologicalHistory: ''
     },
+
+    gynecologicalHistory: {
+      applicable: false,
+      gravidity: '',
+      parity: '',
+      abortions: '',
+      livingChildren: '',
+      lastMenstrualPeriod: '',
+      cycleType: 'R',
+      cycleDuration: '28',
+      isFamilyPlanning: false,
+      familyPlanningMethod: ''
+    },
+
     familyHistory: {
       unableToObtain: false,
       nonContributory: false,
-      details: ''
+      parents: { diseases: [], details: '' },
+      siblings: { diseases: [], details: '' },
+      grandparents: { diseases: [], details: '' }
     },
+
     socialHistory: {
       unableToObtain: false,
       nonContributory: false,
-      etoh: false,
-      tobaccoUse: false,
-      ivda: false
+      tobacco: { uses: false, frequency: '', productType: '', packYears: '' },
+      alcohol: { uses: false, frequency: '', beverageType: '' },
+      psychoactive: { uses: false, substance: '', frequency: '' },
+      sexualPartnersCount: '',
+      occupation: '',
+      livingSituation: ''
     },
 
     physicalExam: {
@@ -159,15 +204,70 @@ function getInitialFormState(): InpatientConsultation {
 
     dataReview: '',
     diagnosesList: [],
+    requestedExams: [],
     assessmentPlan: '',
-    residentSignature: '',
+    residentSignature: 'Dr. Oscar Leonel Rueda Ochoa - Esp. Medicina Interna',
     residentDate: dateStr,
     residentTime: timeStr
   };
 }
 
+function getInitialEvolutionState(): MedicalEvolution {
+  const now = new Date();
+  const dateStr = now.toISOString().split('T')[0];
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  const timeStr = `${hours}:${minutes}`;
+
+  const savedDraft = localStorage.getItem(LOCAL_STORAGE_EVOLUTION_KEY);
+  if (savedDraft) {
+    try {
+      return JSON.parse(savedDraft);
+    } catch {
+      // Ignorar
+    }
+  }
+
+  return {
+    patientName: '',
+    patientIdNumber: '',
+    age: '',
+    biologicalSex: 'M',
+    entity: 'Particular',
+    date: dateStr,
+    time: timeStr,
+    visitType: 'evolution',
+    diagnosticImpressions: [],
+    subjective: '',
+    objective: {
+      vitals: {
+        weight: '',
+        height: '',
+        bloodPressure: '',
+        pulse: '',
+        respiratoryRate: '',
+        temperature: 'afebril',
+        seeFlowSheet: false
+      },
+      physicalExamNarrative: '',
+      laboratoryResults: []
+    },
+    analysis: '',
+    plan: {
+      medicalConduct: '',
+      prescriptions: [],
+      requestedExams: [],
+      nextControl: 'Control con resultados',
+      referrals: ''
+    },
+    attendingDoctorSignature: 'Dr. Oscar Leonel Rueda Ochoa - Esp. Medicina Interna'
+  };
+}
+
 export function App() {
+  const [activeMode, setActiveMode] = useState<'consultation' | 'evolution'>('consultation');
   const [formData, setFormData] = useState<InpatientConsultation>(getInitialFormState);
+  const [evolutionData, setEvolutionData] = useState<MedicalEvolution>(getInitialEvolutionState);
   const [currentStep, setCurrentStep] = useState<number>(1);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [saveStatus, setSaveStatus] = useState<{ success?: boolean; message?: string } | null>(null);
@@ -175,12 +275,16 @@ export function App() {
   const [summaryPreviewText, setSummaryPreviewText] = useState<string>('');
   const [dbStatus, setDbStatus] = useState<{ connected: boolean; status: string }>({ connected: false, status: 'verificando' });
 
-  // Guardar en LocalStorage al modificar el formulario
+  // Guardar borradores en LocalStorage
   useEffect(() => {
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(formData));
+    localStorage.setItem(LOCAL_STORAGE_CONSULT_KEY, JSON.stringify(formData));
   }, [formData]);
 
-  // Verificar estado del backend al montar la aplicación
+  useEffect(() => {
+    localStorage.setItem(LOCAL_STORAGE_EVOLUTION_KEY, JSON.stringify(evolutionData));
+  }, [evolutionData]);
+
+  // Verificar estado del backend
   useEffect(() => {
     checkServerHealth().then((res) => {
       setDbStatus({
@@ -191,22 +295,25 @@ export function App() {
   }, []);
 
   const updateForm = (fields: Partial<InpatientConsultation>) => {
-    setFormData((prev) => ({
-      ...prev,
-      ...fields
-    }));
+    setFormData((prev) => ({ ...prev, ...fields }));
+  };
+
+  const updateEvolutionForm = (fields: Partial<MedicalEvolution>) => {
+    setEvolutionData((prev) => ({ ...prev, ...fields }));
   };
 
   const handleSaveToBackend = async () => {
     setIsSaving(true);
     setSaveStatus(null);
-    const result = await saveConsultation(formData);
+    const payload = activeMode === 'consultation' ? formData : evolutionData;
+    const result = await saveConsultation(payload as any);
     setIsSaving(false);
 
     if (result.success) {
+      const docType = activeMode === 'consultation' ? 'Consulta inicial' : 'Evolución médica (SOAP)';
       setSaveStatus({
         success: true,
-        message: 'Nota clínica de consulta guardada exitosamente en PostgreSQL (ID: ' + (result.data?.id || 'OK') + ').'
+        message: `${docType} guardada exitosamente en la base de datos (ID: ${result.data?.id || 'OK'}).`
       });
       if (result.summaryText) {
         setSummaryPreviewText(result.summaryText);
@@ -214,28 +321,38 @@ export function App() {
     } else {
       setSaveStatus({
         success: false,
-        message: 'Aviso al guardar: ' + result.error + '. (La información permanece protegida en su borrador local).'
+        message: 'Aviso al guardar: ' + result.error + '. (La información permanece en el borrador local).'
       });
     }
   };
 
   const handleOpenPrintPreview = async () => {
-    const text = await previewSummary(formData);
+    const payload = activeMode === 'consultation' ? formData : evolutionData;
+    const text = await previewSummary(payload as any);
     setSummaryPreviewText(text);
     setShowPrintModal(true);
   };
 
   const handleCopyClipboard = async () => {
-    const text = await previewSummary(formData);
+    const payload = activeMode === 'consultation' ? formData : evolutionData;
+    const text = await previewSummary(payload as any);
     navigator.clipboard.writeText(text);
   };
 
   const handleResetForm = () => {
-    if (window.confirm('¿Desea iniciar una nueva consulta en blanco? Los campos actuales se restablecerán.')) {
-      localStorage.removeItem(LOCAL_STORAGE_KEY);
-      setFormData(getInitialFormState());
-      setCurrentStep(1);
-      setSaveStatus(null);
+    if (activeMode === 'consultation') {
+      if (window.confirm('¿Desea restablecer el formulario de Consulta Inicial?')) {
+        localStorage.removeItem(LOCAL_STORAGE_CONSULT_KEY);
+        setFormData(getInitialFormState());
+        setCurrentStep(1);
+        setSaveStatus(null);
+      }
+    } else {
+      if (window.confirm('¿Desea restablecer el formulario de Evolución Médica?')) {
+        localStorage.removeItem(LOCAL_STORAGE_EVOLUTION_KEY);
+        setEvolutionData(getInitialEvolutionState());
+        setSaveStatus(null);
+      }
     }
   };
 
@@ -245,18 +362,64 @@ export function App() {
       <header className="top-navbar no-print">
         <div className="navbar-content">
           <div className="brand-section">
-            <div className="brand-icon-box">Rx</div>
+            <div className="brand-icon-box">Dr</div>
             <div>
-              <h1 className="brand-title">Formulario Clínico de Interconsulta y Visita Hospitalaria</h1>
-              <span className="brand-subtitle">Adaptación al español - Departamento de Medicina Hospitalaria</span>
+              <h1 className="brand-title">Dr. Oscar Leonel Rueda Ochoa</h1>
+              <span className="brand-subtitle">Medicina Interna - Centro Médico Galileo</span>
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          {/* SELECTOR DE MODO DUAL (Q4: Opción C) */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#0f172a', padding: '0.25rem', borderRadius: '8px' }}>
+            <button
+              type="button"
+              className={`btn-pill-mode ${activeMode === 'consultation' ? 'active-mode' : ''}`}
+              onClick={() => {
+                setActiveMode('consultation');
+                setCurrentStep(1);
+                setSaveStatus(null);
+              }}
+              style={{
+                background: activeMode === 'consultation' ? '#2563eb' : 'transparent',
+                color: '#ffffff',
+                border: 'none',
+                padding: '0.45rem 0.85rem',
+                borderRadius: '6px',
+                fontSize: '0.85rem',
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+            >
+              Consulta de Primera Vez
+            </button>
+
+            <button
+              type="button"
+              className={`btn-pill-mode ${activeMode === 'evolution' ? 'active-mode' : ''}`}
+              onClick={() => {
+                setActiveMode('evolution');
+                setSaveStatus(null);
+              }}
+              style={{
+                background: activeMode === 'evolution' ? '#0d9488' : 'transparent',
+                color: '#ffffff',
+                border: 'none',
+                padding: '0.45rem 0.85rem',
+                borderRadius: '6px',
+                fontSize: '0.85rem',
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+            >
+              Evolución Médica (Control / SOAP)
+            </button>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <div className="nav-status-badge">
               <span className={`status-dot ${dbStatus.connected ? 'online' : 'standby'}`}></span>
               <span>
-                {dbStatus.connected ? 'PostgreSQL Activo' : 'Modo Contingencia Local'}
+                {dbStatus.connected ? 'PostgreSQL Activo' : 'Modo Contingencia'}
               </span>
             </div>
 
@@ -264,7 +427,7 @@ export function App() {
               type="button"
               className="btn-outline-secondary"
               onClick={handleResetForm}
-              title="Limpiar formulario e iniciar nueva consulta"
+              title="Limpiar formulario actual"
             >
               Nueva Nota
             </button>
@@ -274,50 +437,65 @@ export function App() {
 
       {/* CONTENIDO PRINCIPAL */}
       <main className="main-content">
-        {/* INDICADOR DE PROGRESO WIZARD */}
-        <WizardProgress
-          currentStep={currentStep}
-          totalSteps={3}
-          onSelectStep={(step) => setCurrentStep(step)}
-        />
+        {/* MODO 1: CONSULTA DE PRIMERA VEZ (WIZARD DE 3 PASOS) */}
+        {activeMode === 'consultation' ? (
+          <div>
+            <WizardProgress
+              currentStep={currentStep}
+              totalSteps={3}
+              onSelectStep={(step) => setCurrentStep(step)}
+            />
 
-        {/* ETAPA 1: HISTORIA CLINICA */}
-        {currentStep === 1 && (
-          <Step1GeneralHistory
-            formData={formData}
-            updateForm={updateForm}
-            onNext={() => {
-              setCurrentStep(2);
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-            }}
-          />
-        )}
+            {/* ETAPA 1: HISTORIA CLINICA Y ANTECEDENTES */}
+            {currentStep === 1 && (
+              <Step1GeneralHistory
+                formData={formData}
+                updateForm={updateForm}
+                onNext={() => {
+                  setCurrentStep(2);
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+              />
+            )}
 
-        {/* ETAPA 2: EXAMEN FISICO */}
-        {currentStep === 2 && (
-          <Step2PhysicalExam
-            formData={formData}
-            updateForm={updateForm}
-            onNext={() => {
-              setCurrentStep(3);
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-            }}
-            onPrev={() => {
-              setCurrentStep(1);
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-            }}
-          />
-        )}
+            {/* ETAPA 2: EXAMEN FISICO */}
+            {currentStep === 2 && (
+              <Step2PhysicalExam
+                formData={formData}
+                updateForm={updateForm}
+                onNext={() => {
+                  setCurrentStep(3);
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                onPrev={() => {
+                  setCurrentStep(1);
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+              />
+            )}
 
-        {/* ETAPA 3: DATOS, DIAGNOSTICO Y PLAN */}
-        {currentStep === 3 && (
-          <Step3Plan
-            formData={formData}
-            updateForm={updateForm}
-            onPrev={() => {
-              setCurrentStep(2);
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-            }}
+            {/* ETAPA 3: DATOS, DIAGNOSTICO, PLAN Y PORTAFOLIO DE EXAMENES */}
+            {currentStep === 3 && (
+              <Step3Plan
+                formData={formData}
+                updateForm={updateForm}
+                onPrev={() => {
+                  setCurrentStep(2);
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                onSave={handleSaveToBackend}
+                onOpenPrintPreview={handleOpenPrintPreview}
+                onCopyClipboard={handleCopyClipboard}
+                isSaving={isSaving}
+                saveStatus={saveStatus}
+              />
+            )}
+          </div>
+        ) : (
+          /* MODO 2: EVOLUCION MEDICA (SOAP WIZARD) */
+          <MedicalEvolutionWizard
+            formData={evolutionData}
+            updateForm={updateEvolutionForm}
             onSave={handleSaveToBackend}
             onOpenPrintPreview={handleOpenPrintPreview}
             onCopyClipboard={handleCopyClipboard}
@@ -330,7 +508,7 @@ export function App() {
       {/* MODAL DE IMPRESION CLINICA / REPORTE PDF */}
       {showPrintModal && (
         <PrintableSummary
-          formData={formData}
+          formData={activeMode === 'consultation' ? formData : evolutionData}
           summaryText={summaryPreviewText}
           onClose={() => setShowPrintModal(false)}
         />

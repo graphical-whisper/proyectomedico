@@ -31,6 +31,14 @@ export const Step3Plan: React.FC<Step3Props> = ({
     setTimeout(() => setCopyFeedback(false), 2500);
   };
 
+  const handleExamsChange = (selectedNames: string[]) => {
+    const mapped = selectedNames.map(name => {
+      const existing = formData.requestedExams?.find(e => e.testName === name);
+      return existing || { testName: name };
+    });
+    updateForm({ requestedExams: mapped });
+  };
+
   return (
     <div className="step-container animate-fade-in">
       {/* 1. SECCION: REVISION DE DATOS Y PARACLINICOS */}
@@ -77,7 +85,28 @@ export const Step3Plan: React.FC<Step3Props> = ({
         </div>
       </div>
 
-      {/* 3. SECCION: EVALUACION Y PLAN (ASSESSMENT AND PLAN) */}
+      {/* 3. SECCION: SOLICITUD DE EXAMENES DE LABORATORIO E IMAGENES (SS) */}
+      <div className="clinical-card">
+        <div className="card-header">
+          <div className="card-badge">Catálogo SILAB (1.578 Exámenes)</div>
+          <h2 className="card-title">Solicitud de Exámenes de Laboratorio y Paraclínicos (SS)</h2>
+          <p className="card-description">Órdenes médicas con códigos CUPS y nombres homologados</p>
+        </div>
+
+        <div className="sub-panel">
+          <Select2Search
+            category="examen"
+            label="Buscar Exámenes en el Portafolio (SILAB / Códigos CUPS)"
+            placeholder="Escriba el nombre del examen o código CUPS (ej. Glucosa, TSH, Hemograma, Ácido Úrico, 903841)..."
+            isMulti={true}
+            values={(formData.requestedExams || []).map(e => e.testName)}
+            onChangeMulti={handleExamsChange}
+            helperText="Búsqueda instantánea en los 1.578 exámenes disponibles en el portafolio del laboratorio."
+          />
+        </div>
+      </div>
+
+      {/* 4. SECCION: EVALUACION Y PLAN (ASSESSMENT AND PLAN) */}
       <div className="clinical-card">
         <div className="card-header">
           <h2 className="card-title">Evaluación y Plan Terapéutico (Assessment & Plan)</h2>
@@ -109,7 +138,7 @@ export const Step3Plan: React.FC<Step3Props> = ({
         </div>
       </div>
 
-      {/* 4. SECCION: FIRMA DEL PROFESIONAL TRATANTE / RESIDENTE */}
+      {/* 5. SECCION: FIRMA DEL PROFESIONAL TRATANTE / RESIDENTE */}
       <div className="clinical-card">
         <div className="card-header">
           <h2 className="card-title">Identificación y Firma del Médico Evaluador</h2>

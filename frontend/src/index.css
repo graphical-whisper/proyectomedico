@@ -3,17 +3,27 @@
    ========================================================================== */
 
 :root {
-  /* Paleta cromática médica moderna */
-  --primary-50: #f0fdfa;
-  --primary-100: #ccfbf1;
-  --primary-500: #14b8a6;
-  --primary-600: #0d9488;
-  --primary-700: #0f766e;
-  --primary-800: #115e59;
-  --primary-900: #134e4a;
+  /* Paleta cromática médica oficial - Dr. Oscar Leonel Rueda Ochoa (Cyan & Cerulean Blue) */
+  --primary-50: #f0f9ff;
+  --primary-100: #e0f2fe;
+  --primary-200: #bae6fd;
+  --primary-300: #7dd3fc;
+  --primary-400: #38bdf8;
+  --primary-500: #0ea5e9;
+  --primary-600: #0284c7;
+  --primary-700: #0369a1;
+  --primary-800: #075985;
+  --primary-900: #0c4a6e;
+
+  /* Colores de identidad médica */
+  --medical-cyan: #38bdf8;
+  --medical-cerulean: #0284c7;
+  --medical-navy: #0c4a6e;
+  --medical-gradient: linear-gradient(135deg, #38bdf8 0%, #0284c7 100%);
+  --medical-header-gradient: linear-gradient(135deg, #48a6dc 0%, #1e7bb8 100%);
 
   --accent-blue: #0284c7;
-  --accent-indigo: #4f46e5;
+  --accent-indigo: #0369a1;
   --success: #10b981;
   --warning: #f59e0b;
   --danger: #ef4444;
@@ -34,7 +44,7 @@
   --bg-page: #f8fafc;
   --surface-card: #ffffff;
   --border-color: #e2e8f0;
-  --border-focus: #0d9488;
+  --border-focus: #0284c7;
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
@@ -71,8 +81,9 @@ body {
 }
 
 .top-navbar {
-  background: rgba(255, 255, 255, 0.95);
+  background: rgba(255, 255, 255, 0.96);
   backdrop-filter: blur(12px);
+  border-top: 3px solid var(--medical-cyan);
   border-bottom: 1px solid var(--slate-200);
   padding: 0.85rem 2rem;
   position: sticky;
@@ -98,7 +109,7 @@ body {
 .brand-icon-box {
   width: 40px;
   height: 40px;
-  background: linear-gradient(135deg, var(--primary-700), var(--primary-500));
+  background: var(--medical-gradient);
   border-radius: var(--radius-md);
   display: flex;
   align-items: center;
@@ -106,7 +117,7 @@ body {
   color: white;
   font-weight: 700;
   font-size: 1.25rem;
-  box-shadow: 0 4px 10px rgba(13, 148, 136, 0.3);
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35);
 }
 
 .brand-title {
@@ -542,7 +553,7 @@ body {
 
 .select2-box.is-open {
   border-color: var(--border-focus);
-  box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.15);
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.2);
 }
 
 .select2-chips-container {
@@ -981,7 +992,7 @@ body {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, var(--primary-700), var(--primary-600));
+  background: var(--medical-gradient);
   color: white;
   border: none;
   padding: 0.75rem 1.5rem;
@@ -989,13 +1000,13 @@ body {
   font-weight: 600;
   font-size: 0.9rem;
   cursor: pointer;
-  box-shadow: 0 2px 4px rgba(15, 118, 110, 0.25);
+  box-shadow: 0 3px 8px rgba(2, 132, 199, 0.25);
   transition: all 0.2s ease;
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: linear-gradient(135deg, var(--primary-800), var(--primary-700));
-  box-shadow: 0 4px 8px rgba(15, 118, 110, 0.35);
+  background: linear-gradient(135deg, var(--primary-500), var(--primary-700));
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35);
 }
 
 .btn-primary:disabled {
@@ -1194,7 +1205,7 @@ body {
 .doc-institution-header {
   display: flex;
   justify-content: space-between;
-  border-bottom: 2px solid #0f766e;
+  border-bottom: 2px solid var(--medical-cerulean);
   padding-bottom: 1rem;
   margin-bottom: 1.25rem;
 }
@@ -1202,7 +1213,7 @@ body {
 .doc-hospital-name {
   font-size: 1.05rem;
   font-weight: 700;
-  color: #0f766e;
+  color: var(--medical-cerulean);
   letter-spacing: -0.01em;
 }
 
@@ -1219,13 +1230,37 @@ body {
   color: #475569;
 }
 
+.doc-prescription-banner {
+  background: var(--medical-header-gradient);
+  color: #ffffff;
+  padding: 1.15rem 1.4rem;
+  border-radius: var(--radius-sm);
+  margin-bottom: 1rem;
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.2);
+}
+
+.doc-prescription-title {
+  font-size: 1.3rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: #ffffff;
+  margin-bottom: 0.2rem;
+}
+
+.doc-prescription-sub {
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.92);
+  line-height: 1.35;
+}
+
 .doc-patient-banner {
   display: flex;
   justify-content: space-between;
-  background-color: #f1f5f9;
-  border: 1px solid #cbd5e1;
+  background-color: #f0f9ff;
+  border: 1px solid var(--primary-200);
   padding: 0.65rem 1rem;
   font-size: 0.88rem;
+  border-radius: var(--radius-sm);
   margin-bottom: 1.25rem;
 }
 
@@ -1238,7 +1273,7 @@ body {
 .doc-section-title {
   font-size: 0.88rem;
   font-weight: 700;
-  color: #0f766e;
+  color: var(--medical-cerulean);
   text-transform: uppercase;
   letter-spacing: 0.03em;
   margin-bottom: 0.45rem;

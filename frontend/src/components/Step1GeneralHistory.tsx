@@ -1,5 +1,5 @@
-import React from 'react';
-import { InpatientConsultation, ReviewOfSystems } from '../types/consultation.js';
+import React, { useState } from 'react';
+import { InpatientConsultation, ReviewOfSystems, FixedPathologies } from '../types/consultation.js';
 import { Select2Search } from './Select2Search.js';
 
 interface Step1Props {
@@ -25,11 +25,38 @@ const ROS_SYSTEMS_CONFIG: { key: keyof ReviewOfSystems; label: string; examples:
   { key: 'immunologic', label: 'Inmunologico', examples: 'Infecciones recurrentes, fenomenos alergicos' }
 ];
 
+const FIXED_PATHOLOGY_ITEMS: { key: keyof FixedPathologies; label: string }[] = [
+  { key: 'htaCronica', label: 'HTA Crónica' },
+  { key: 'hipoTa', label: 'Hipotensión' },
+  { key: 'dmnid', label: 'DMNID (Diabetes)' },
+  { key: 'hipoglicemia', label: 'Hipoglicemia' },
+  { key: 'dislipidemia', label: 'Dislipidemia' },
+  { key: 'problemasTiroides', label: 'Problemas Tiroides' },
+  { key: 'asma', label: 'Asma' },
+  { key: 'epoc', label: 'EPOC' },
+  { key: 'erc', label: 'Enfermedad Renal Crónica' },
+  { key: 'cardiopatiaIsquemica', label: 'Cardiopatía Isquémica' },
+  { key: 'obesidad', label: 'Obesidad' },
+  { key: 'cancer', label: 'Cáncer' }
+];
+
+const COMMON_HEREDITARY_DISEASES = [
+  'HTA',
+  'Diabetes Mellitus',
+  'Cáncer',
+  'Cardiopatía',
+  'Accidente Cerebrovascular (ACV)'
+];
+
+const BLOOD_TYPES = ['O+', 'A+', 'B+', 'AB+', 'O-', 'A-', 'B-', 'AB-', 'No determinado'];
+
 export const Step1GeneralHistory: React.FC<Step1Props> = ({
   formData,
   updateForm,
   onNext
 }) => {
+  const [manualGynecoToggle, setManualGynecoToggle] = useState<boolean>(false);
+
   const handleRosChange = (sysKey: string, field: 'normal' | 'comments', val: any) => {
     const currentRos = { ...formData.reviewOfSystems } as any;
     currentRos[sysKey] = {
@@ -48,14 +75,30 @@ export const Step1GeneralHistory: React.FC<Step1Props> = ({
     updateForm({ reviewOfSystems: updated });
   };
 
+  const handleFixedPathologyToggle = (key: keyof FixedPathologies, value: boolean) => {
+    const currentFixed = { ...(formData.pastMedicalSurgical?.fixedPathologies || {}) } as FixedPathologies;
+    updateForm({
+      pastMedicalSurgical: {
+        ...formData.pastMedicalSurgical,
+        fixedPathologies: {
+          ...currentFixed,
+          [key]: value
+        }
+      }
+    });
+  };
+
+  const isFemale = formData.biologicalSex === 'F';
+  const showGynecology = isFemale || manualGynecoToggle;
+
   return (
     <div className="step-container animate-fade-in">
-      {/* 1. SECCION: IDENTIFICACION Y DATOS DE LA VISITA */}
+      {/* 1. SECCION: IDENTIFICACION Y DATOS DEMOGRAFICOS */}
       <div className="clinical-card">
         <div className="card-header">
-          <div className="card-badge">Documento Base: Pagina 1</div>
-          <h2 className="card-title">Datos Generales e Identificación de la Consulta</h2>
-          <p className="card-description">Registro de la orden médica, tipo de asistencia e identificación del paciente</p>
+          <div className="card-badge">Formato Consultorio Dr. Oscar Rueda</div>
+          <h2 className="card-title">Datos Generales e Identificación del Paciente</h2>
+          <p className="card-description">Filiación demográfica, aseguramiento y tipo de atención médica</p>
         </div>
 
         <div className="form-grid-3">
@@ -64,7 +107,7 @@ export const Step1GeneralHistory: React.FC<Step1Props> = ({
             <input
               type="text"
               className="form-input"
-              placeholder="Ej. Juan Carlos Perez Gomez"
+              placeholder="Ej. Ítalo Estupiñán"
               value={formData.patientName}
               onChange={(e) => updateForm({ patientName: e.target.value })}
               required
@@ -72,16 +115,91 @@ export const Step1GeneralHistory: React.FC<Step1Props> = ({
           </div>
 
           <div className="form-group">
-            <label className="form-label">N° de Historia Clínica / Cédula</label>
+            <label className="form-label">N° de Cédula / Historia Clínica</label>
             <input
               type="text"
               className="form-input"
-              placeholder="Ej. HC-84920412"
+              placeholder="Ej. 1098765432"
               value={formData.patientIdNumber || ''}
               onChange={(e) => updateForm({ patientIdNumber: e.target.value })}
             />
           </div>
 
+          <div className="form-group">
+            <label className="form-label">Entidad / Aseguradora</label>
+            <input
+              type="text"
+              className="form-input"
+              placeholder="Ej. Particular, EPS Sanitas, Sura..."
+              value={formData.entity || ''}
+              onChange={(e) => updateForm({ entity: e.target.value })}
+            />
+          </div>
+        </div>
+
+        <div className="form-grid-4 mt-3">
+          <div className="form-group">
+            <label className="form-label">Sexo Biológico</label>
+            <div className="radio-group-container">
+              <label className={`radio-pill ${formData.biologicalSex === 'M' ? 'is-selected' : ''}`}>
+                <input
+                  type="radio"
+                  name="biologicalSex"
+                  value="M"
+                  checked={formData.biologicalSex === 'M'}
+                  onChange={() => updateForm({ biologicalSex: 'M' })}
+                />
+                Masculino
+              </label>
+
+              <label className={`radio-pill ${formData.biologicalSex === 'F' ? 'is-selected' : ''}`}>
+                <input
+                  type="radio"
+                  name="biologicalSex"
+                  value="F"
+                  checked={formData.biologicalSex === 'F'}
+                  onChange={() => updateForm({ biologicalSex: 'F' })}
+                />
+                Femenino
+              </label>
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Edad</label>
+            <input
+              type="text"
+              className="form-input"
+              placeholder="Ej. 44 años"
+              value={formData.age || ''}
+              onChange={(e) => updateForm({ age: e.target.value })}
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Ocupación</label>
+            <input
+              type="text"
+              className="form-input"
+              placeholder="Ej. Comerciante frutas"
+              value={formData.occupation || ''}
+              onChange={(e) => updateForm({ occupation: e.target.value })}
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Procedencia</label>
+            <input
+              type="text"
+              className="form-input"
+              placeholder="Ej. Bucaramanga"
+              value={formData.originCity || ''}
+              onChange={(e) => updateForm({ originCity: e.target.value })}
+            />
+          </div>
+        </div>
+
+        <div className="form-grid-3 mt-3">
           <div className="form-group">
             <label className="form-label required">Tipo de Atención</label>
             <div className="radio-group-container">
@@ -93,7 +211,7 @@ export const Step1GeneralHistory: React.FC<Step1Props> = ({
                   checked={formData.visitType === 'initial_visit'}
                   onChange={() => updateForm({ visitType: 'initial_visit' })}
                 />
-                Visita Hospitalaria Inicial
+                Visita Hospitalaria / Consulta
               </label>
 
               <label className={`radio-pill ${formData.visitType === 'consult' ? 'is-selected' : ''}`}>
@@ -108,9 +226,7 @@ export const Step1GeneralHistory: React.FC<Step1Props> = ({
               </label>
             </div>
           </div>
-        </div>
 
-        <div className="form-grid-3 mt-4">
           <div className="form-group">
             <label className="form-label required">Fecha de Atención</label>
             <input
@@ -132,20 +248,20 @@ export const Step1GeneralHistory: React.FC<Step1Props> = ({
               required
             />
           </div>
-
-          {formData.visitType === 'consult' && (
-            <div className="form-group animate-slide-down">
-              <label className="form-label required">Médico o Servicio Solicitante</label>
-              <input
-                type="text"
-                className="form-input"
-                placeholder="Ej. Dr. Ramirez - Servicio de Cirugia General"
-                value={formData.requestingPhysician || ''}
-                onChange={(e) => updateForm({ requestingPhysician: e.target.value })}
-              />
-            </div>
-          )}
         </div>
+
+        {formData.visitType === 'consult' && (
+          <div className="form-group mt-3 animate-slide-down">
+            <label className="form-label required">Médico o Servicio Solicitante</label>
+            <input
+              type="text"
+              className="form-input"
+              placeholder="Ej. Dr. Sergio Alvernia - Medicina Interna"
+              value={formData.requestingPhysician || ''}
+              onChange={(e) => updateForm({ requestingPhysician: e.target.value })}
+            />
+          </div>
+        )}
       </div>
 
       {/* 2. SECCION: ALERGIAS Y MEDICAMENTOS */}
@@ -172,14 +288,14 @@ export const Step1GeneralHistory: React.FC<Step1Props> = ({
                     });
                   }}
                 />
-                Sin alergias conocidas (NKDA)
+                Sin alergias conocidas (NKDA / (-))
               </label>
             </div>
 
             <Select2Search
               category="alergia"
               label="Buscar Alergias en Catálogo"
-              placeholder="Escriba medicamento o sustancia alergénica..."
+              placeholder="Escriba medicamento o sustancia alergénica (ej. Penicilina, AINEs)..."
               isMulti={true}
               values={formData.allergiesList}
               onChangeMulti={(vals) => {
@@ -189,7 +305,7 @@ export const Step1GeneralHistory: React.FC<Step1Props> = ({
                 });
               }}
               disabled={formData.nkda}
-              helperText="Seleccione de la lista o presione Enter para registrar un término libre."
+              helperText="El catálogo contiene los alérgenos de mayor prevalencia precargados."
             />
           </div>
 
@@ -212,7 +328,7 @@ export const Step1GeneralHistory: React.FC<Step1Props> = ({
                     checked={formData.supplements}
                     onChange={(e) => updateForm({ supplements: e.target.checked })}
                   />
-                  Suplementos / Hierbas
+                  Suplementos
                 </label>
               </div>
             </div>
@@ -234,7 +350,7 @@ export const Step1GeneralHistory: React.FC<Step1Props> = ({
                   checked={formData.homeMedsConsidered}
                   onChange={(e) => updateForm({ homeMedsConsidered: e.target.checked })}
                 />
-                He considerado la lista de medicación domiciliaria al redactar las órdenes médicas.
+                He considerado la lista de medicación domiciliaria al redactar las órdenes.
               </label>
             </div>
           </div>
@@ -245,7 +361,7 @@ export const Step1GeneralHistory: React.FC<Step1Props> = ({
       <div className="clinical-card">
         <div className="card-header">
           <div className="card-badge">Dimensiones HPI</div>
-          <h2 className="card-title">Motivo de Consulta y Enfermedad Actual (HPI)</h2>
+          <h2 className="card-title">Motivo de Consulta y Enfermedad Actual</h2>
           <p className="card-description">Exploración estructurada de los elementos clínicos de la queja principal</p>
         </div>
 
@@ -265,7 +381,7 @@ export const Step1GeneralHistory: React.FC<Step1Props> = ({
           {!formData.hpiUnableToObtain ? (
             <Select2Search
               category="motivo_consulta"
-              placeholder="Buscar motivo frecuente o ingresar síntoma guía..."
+              placeholder="Ej. Chequeo Médico, Epigastralgia, Dolor torácico..."
               isMulti={false}
               value={formData.chiefComplaint}
               onChangeSingle={(val) => updateForm({ chiefComplaint: val })}
@@ -274,14 +390,13 @@ export const Step1GeneralHistory: React.FC<Step1Props> = ({
             <input
               type="text"
               className="form-input warning-input"
-              placeholder="Indicar motivo (ej. Paciente intubado, estuporoso, sin acudiente disponible)..."
+              placeholder="Indicar motivo (ej. Paciente intubado, estuporoso, sin acudiente)..."
               value={formData.hpiUnableReason || ''}
               onChange={(e) => updateForm({ hpiUnableReason: e.target.value })}
             />
           )}
         </div>
 
-        {/* Dimensiones clínicas del HPI (8 elementos según estándar de consulta médica) */}
         {!formData.hpiUnableToObtain && (
           <div className="dimensions-box">
             <h4 className="dimensions-title">Caracterización Estructurada del Síntoma:</h4>
@@ -291,7 +406,7 @@ export const Step1GeneralHistory: React.FC<Step1Props> = ({
                 <input
                   type="text"
                   className="form-input"
-                  placeholder="Ej. Retroesternal irradiado a mandíbula"
+                  placeholder="Ej. Epigastrio, retroesternal..."
                   value={formData.hpiLocation || ''}
                   onChange={(e) => updateForm({ hpiLocation: e.target.value })}
                 />
@@ -302,7 +417,7 @@ export const Step1GeneralHistory: React.FC<Step1Props> = ({
                 <input
                   type="text"
                   className="form-input"
-                  placeholder="Ej. Opresivo, punzante, urente, cólico"
+                  placeholder="Ej. Urente, opresivo, punzante..."
                   value={formData.hpiQuality || ''}
                   onChange={(e) => updateForm({ hpiQuality: e.target.value })}
                 />
@@ -313,7 +428,7 @@ export const Step1GeneralHistory: React.FC<Step1Props> = ({
                 <input
                   type="text"
                   className="form-input"
-                  placeholder="Ej. 3 horas de evolución sostenida"
+                  placeholder="Ej. 15 días, 3 horas..."
                   value={formData.hpiDuration || ''}
                   onChange={(e) => updateForm({ hpiDuration: e.target.value })}
                 />
@@ -324,7 +439,7 @@ export const Step1GeneralHistory: React.FC<Step1Props> = ({
                 <input
                   type="text"
                   className="form-input"
-                  placeholder="Ej. Inicio súbito, matutino, recurrente"
+                  placeholder="Ej. Luego de ingesta de café..."
                   value={formData.hpiTiming || ''}
                   onChange={(e) => updateForm({ hpiTiming: e.target.value })}
                 />
@@ -335,7 +450,7 @@ export const Step1GeneralHistory: React.FC<Step1Props> = ({
                 <input
                   type="text"
                   className="form-input"
-                  placeholder="Ej. 8/10 en escala visual análoga"
+                  placeholder="Ej. Moderada (6/10 EVA)..."
                   value={formData.hpiSeverity || ''}
                   onChange={(e) => updateForm({ hpiSeverity: e.target.value })}
                 />
@@ -346,7 +461,7 @@ export const Step1GeneralHistory: React.FC<Step1Props> = ({
                 <input
                   type="text"
                   className="form-input"
-                  placeholder="Ej. Durante esfuerzo físico moderado"
+                  placeholder="Ej. Manifiesta preocupación por..."
                   value={formData.hpiContext || ''}
                   onChange={(e) => updateForm({ hpiContext: e.target.value })}
                 />
@@ -357,7 +472,7 @@ export const Step1GeneralHistory: React.FC<Step1Props> = ({
                 <input
                   type="text"
                   className="form-input"
-                  placeholder="Ej. No cede con reposo ni nitratos"
+                  placeholder="Ej. Empeora con café o ayuno prolongado..."
                   value={formData.hpiModifyingFactors || ''}
                   onChange={(e) => updateForm({ hpiModifyingFactors: e.target.value })}
                 />
@@ -368,7 +483,7 @@ export const Step1GeneralHistory: React.FC<Step1Props> = ({
                 <input
                   type="text"
                   className="form-input"
-                  placeholder="Ej. Diaforesis profusa, náuseas, disnea"
+                  placeholder="Ej. Náuseas, pirosis, reflujo..."
                   value={formData.hpiAssociatedSymptoms || ''}
                   onChange={(e) => updateForm({ hpiAssociatedSymptoms: e.target.value })}
                 />
@@ -380,7 +495,7 @@ export const Step1GeneralHistory: React.FC<Step1Props> = ({
               <textarea
                 className="form-textarea"
                 rows={3}
-                placeholder="Describa la cronología de eventos, atención previa en urgencias y evolución del cuadro clínico..."
+                placeholder="Describa el relato cronológico detallado de la queja actual del paciente..."
                 value={formData.hpiNarrative || ''}
                 onChange={(e) => updateForm({ hpiNarrative: e.target.value })}
               ></textarea>
@@ -403,7 +518,7 @@ export const Step1GeneralHistory: React.FC<Step1Props> = ({
                 className="btn-outline-primary"
                 onClick={handleMarkAllRosNormal}
               >
-                Marcar Todos Normales (Negativo Estándar)
+                Marcar Todos Normales (Negativo Estándar / (-))
               </button>
             </div>
           </div>
@@ -423,7 +538,7 @@ export const Step1GeneralHistory: React.FC<Step1Props> = ({
                 });
               }}
             />
-            Resto de sistemas interrogados y negativos
+            Resto de sistemas interrogados y negativos (-)
           </label>
 
           <label className="checkbox-label">
@@ -449,8 +564,8 @@ export const Step1GeneralHistory: React.FC<Step1Props> = ({
               <thead>
                 <tr>
                   <th style={{ width: '28%' }}>Sistema / Aparato</th>
-                  <th style={{ width: '12%', textAlign: 'center' }}>Estado</th>
-                  <th style={{ width: '60%' }}>Comentarios / Síntomas Positivos o Negativos Pertinentes</th>
+                  <th style={{ width: '14%', textAlign: 'center' }}>Estado</th>
+                  <th style={{ width: '58%' }}>Comentarios / Síntomas Pertinentes</th>
                 </tr>
               </thead>
               <tbody>
@@ -471,14 +586,14 @@ export const Step1GeneralHistory: React.FC<Step1Props> = ({
                             className={`toggle-btn ${isNormal ? 'active-normal' : ''}`}
                             onClick={() => handleRosChange(sys.key, 'normal', true)}
                           >
-                            Normal
+                            Normal (-)
                           </button>
                           <button
                             type="button"
                             className={`toggle-btn ${!isNormal ? 'active-abnormal' : ''}`}
                             onClick={() => handleRosChange(sys.key, 'normal', false)}
                           >
-                            Anormal
+                            Anormal (+)
                           </button>
                         </div>
                       </td>
@@ -486,7 +601,7 @@ export const Step1GeneralHistory: React.FC<Step1Props> = ({
                         <input
                           type="text"
                           className="form-input compact-input"
-                          placeholder={isNormal ? 'Sin hallazgos patológicos referidos' : 'Describa el síntoma anormal reportado...'}
+                          placeholder={isNormal ? 'Sin hallazgos referidos' : 'Describa el síntoma anormal...'}
                           value={currentSys.comments || ''}
                           onChange={(e) => handleRosChange(sys.key, 'comments', e.target.value)}
                         />
@@ -500,41 +615,60 @@ export const Step1GeneralHistory: React.FC<Step1Props> = ({
         )}
       </div>
 
-      {/* 5. SECCION: ANTECEDENTES */}
+      {/* 5. SECCION: ANTECEDENTES CLINICOS FUSIONADOS */}
       <div className="clinical-card">
         <div className="card-header">
-          <h2 className="card-title">Antecedentes Médicos, Quirúrgicos, Familiares y Sociales</h2>
-          <p className="card-description">Historia previa del paciente y factores de riesgo biosociales</p>
+          <h2 className="card-title">Antecedentes Clínicos</h2>
+          <p className="card-description">Integración de antecedentes médicos, quirúrgicos, ginecológicos, hábitos y familiares</p>
         </div>
 
-        <div className="form-grid-3">
-          {/* Antecedentes Médicos y Quirúrgicos */}
-          <div className="sub-panel">
-            <div className="panel-title-row">
-              <h3 className="panel-title">Médicos y Quirúrgicos</h3>
-              <label className="checkbox-label">
-                <input
-                  type="checkbox"
-                  checked={formData.pastMedicalSurgical.nonContributory}
-                  onChange={(e) => {
-                    updateForm({
-                      pastMedicalSurgical: {
-                        ...formData.pastMedicalSurgical,
-                        nonContributory: e.target.checked
-                      }
-                    });
-                  }}
-                />
-                No contributorio
-              </label>
-            </div>
+        {/* 5.1 ANTECEDENTES PATOLOGICOS FIJOS Y OTROS */}
+        <div className="sub-panel mb-4">
+          <div className="panel-title-row">
+            <h3 className="panel-title">Patológicos Fijos de Control Clínico</h3>
+            <span style={{ fontSize: '0.82rem', color: '#64748b' }}>
+              Marque (+) si está presente o (-) si es negativo
+            </span>
+          </div>
 
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '0.75rem', marginTop: '0.75rem' }}>
+            {FIXED_PATHOLOGY_ITEMS.map((item) => {
+              const currentVal = !!(formData.pastMedicalSurgical?.fixedPathologies as any)?.[item.key];
+              return (
+                <div key={item.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem 0.75rem', background: currentVal ? 'rgba(239, 68, 68, 0.08)' : '#f8fafc', border: `1px solid ${currentVal ? '#ef4444' : '#e2e8f0'}`, borderRadius: '6px' }}>
+                  <span style={{ fontSize: '0.85rem', fontWeight: 600, color: currentVal ? '#991b1b' : '#334155' }}>
+                    {item.label}
+                  </span>
+                  <div className="status-toggle-pill" style={{ margin: 0 }}>
+                    <button
+                      type="button"
+                      className={`toggle-btn ${!currentVal ? 'active-normal' : ''}`}
+                      onClick={() => handleFixedPathologyToggle(item.key, false)}
+                      style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem' }}
+                    >
+                      No (-)
+                    </button>
+                    <button
+                      type="button"
+                      className={`toggle-btn ${currentVal ? 'active-abnormal' : ''}`}
+                      onClick={() => handleFixedPathologyToggle(item.key, true)}
+                      style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem' }}
+                    >
+                      Sí (+)
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="mt-3">
             <Select2Search
               category="antecedente"
-              label="Patologías Previas Conocidas"
-              placeholder="Buscar hipertensión, diabetes, etc..."
+              label="Otros Antecedentes Patológicos (ej. Covid, Gastritis, etc.)"
+              placeholder="Buscar o ingresar otros antecedentes..."
               isMulti={true}
-              values={formData.pastMedicalSurgical.conditions}
+              values={formData.pastMedicalSurgical?.conditions || []}
               onChangeMulti={(vals) => {
                 updateForm({
                   pastMedicalSurgical: {
@@ -543,215 +677,817 @@ export const Step1GeneralHistory: React.FC<Step1Props> = ({
                   }
                 });
               }}
-              disabled={formData.pastMedicalSurgical.nonContributory}
             />
+          </div>
+        </div>
 
-            <div className="form-group mt-3">
-              <label className="form-sublabel">Cirugías Previas / Procedimientos</label>
-              <input
-                type="text"
+        {/* 5.2 QUIRURGICOS, TOXICOS, TRAUMATICOS, HOSPITALARIOS, TRANSFUSIONALES, FARMACOLOGICOS */}
+        <div className="form-grid-3 mb-4">
+          <div className="sub-panel">
+            <h4 style={{ fontWeight: 600, fontSize: '0.9rem', marginBottom: '0.4rem' }}>Quirúrgicos</h4>
+            <input
+              type="text"
+              className="form-input"
+              placeholder="Ej. (+) Pterigio derecho, Colecistectomía..."
+              value={formData.pastMedicalSurgical?.surgicalHistory || ''}
+              onChange={(e) => {
+                updateForm({
+                  pastMedicalSurgical: {
+                    ...formData.pastMedicalSurgical,
+                    surgicalHistory: e.target.value
+                  }
+                });
+              }}
+            />
+          </div>
+
+          <div className="sub-panel">
+            <h4 style={{ fontWeight: 600, fontSize: '0.9rem', marginBottom: '0.4rem' }}>Tóxicos</h4>
+            <input
+              type="text"
+              className="form-input"
+              placeholder="Ej. (+) por hígado, exposición a solventes..."
+              value={formData.pastMedicalSurgical?.toxicHistory || ''}
+              onChange={(e) => {
+                updateForm({
+                  pastMedicalSurgical: {
+                    ...formData.pastMedicalSurgical,
+                    toxicHistory: e.target.value
+                  }
+                });
+              }}
+            />
+          </div>
+
+          <div className="sub-panel">
+            <h4 style={{ fontWeight: 600, fontSize: '0.9rem', marginBottom: '0.4rem' }}>Traumáticos</h4>
+            <input
+              type="text"
+              className="form-input"
+              placeholder="Ej. (-) No refiere, o Fractura de fémur (2015)..."
+              value={formData.pastMedicalSurgical?.traumaticHistory || ''}
+              onChange={(e) => {
+                updateForm({
+                  pastMedicalSurgical: {
+                    ...formData.pastMedicalSurgical,
+                    traumaticHistory: e.target.value
+                  }
+                });
+              }}
+            />
+          </div>
+
+          <div className="sub-panel">
+            <h4 style={{ fontWeight: 600, fontSize: '0.9rem', marginBottom: '0.4rem' }}>Hospitalarios</h4>
+            <input
+              type="text"
+              className="form-input"
+              placeholder="Ej. (-) o Hospitalización por neumonía en 2021..."
+              value={formData.pastMedicalSurgical?.hospitalHistory || ''}
+              onChange={(e) => {
+                updateForm({
+                  pastMedicalSurgical: {
+                    ...formData.pastMedicalSurgical,
+                    hospitalHistory: e.target.value
+                  }
+                });
+              }}
+            />
+          </div>
+
+          <div className="sub-panel">
+            <h4 style={{ fontWeight: 600, fontSize: '0.9rem', marginBottom: '0.4rem' }}>Transfusionales y Rh</h4>
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+              <select
                 className="form-input"
-                placeholder="Ej. Apendicectomía (2015), Colecistectomía laparoscópica (2020)"
-                value={formData.pastMedicalSurgical.surgicalHistory || ''}
+                style={{ width: '45%' }}
+                value={formData.pastMedicalSurgical?.transfusionHistory?.bloodType || 'No determinado'}
                 onChange={(e) => {
+                  const currentTh = formData.pastMedicalSurgical?.transfusionHistory || { hasTransfusions: false, bloodType: 'No determinado' };
                   updateForm({
                     pastMedicalSurgical: {
                       ...formData.pastMedicalSurgical,
-                      surgicalHistory: e.target.value
+                      transfusionHistory: { ...currentTh, bloodType: e.target.value }
                     }
                   });
                 }}
-                disabled={formData.pastMedicalSurgical.nonContributory}
-              />
-            </div>
-          </div>
+              >
+                {BLOOD_TYPES.map(bt => <option key={bt} value={bt}>{bt}</option>)}
+              </select>
 
-          {/* Antecedentes Familiares */}
-          <div className="sub-panel">
-            <div className="panel-title-row">
-              <h3 className="panel-title">Antecedentes Familiares</h3>
-              <label className="checkbox-label">
+              <label className="checkbox-label" style={{ fontSize: '0.8rem' }}>
                 <input
                   type="checkbox"
-                  checked={formData.familyHistory.nonContributory}
+                  checked={!!formData.pastMedicalSurgical?.transfusionHistory?.hasTransfusions}
                   onChange={(e) => {
+                    const currentTh = formData.pastMedicalSurgical?.transfusionHistory || { hasTransfusions: false, bloodType: 'No determinado' };
                     updateForm({
-                      familyHistory: {
-                        ...formData.familyHistory,
-                        nonContributory: e.target.checked
+                      pastMedicalSurgical: {
+                        ...formData.pastMedicalSurgical,
+                        transfusionHistory: { ...currentTh, hasTransfusions: e.target.checked }
                       }
                     });
                   }}
                 />
-                No contributorio
+                Transfusiones (+)
               </label>
             </div>
+          </div>
 
-            <div className="form-group">
-              <label className="form-sublabel">Patologías en Familiares de 1er Grado</label>
-              <textarea
-                className="form-textarea"
-                rows={4}
-                placeholder="Ej. Padre: Infarto agudo de miocardio a los 55 años. Madre: Diabetes mellitus tipo 2..."
-                value={formData.familyHistory.details || ''}
+          <div className="sub-panel">
+            <h4 style={{ fontWeight: 600, fontSize: '0.9rem', marginBottom: '0.4rem' }}>Farmacológicos Previos</h4>
+            <input
+              type="text"
+              className="form-input"
+              placeholder="Ej. (-) Ninguno, o Enalapril 10mg..."
+              value={formData.pastMedicalSurgical?.pharmacologicalHistory || ''}
+              onChange={(e) => {
+                updateForm({
+                  pastMedicalSurgical: {
+                    ...formData.pastMedicalSurgical,
+                    pharmacologicalHistory: e.target.value
+                  }
+                });
+              }}
+            />
+          </div>
+        </div>
+
+        {/* 5.3 ANTECEDENTES GINECOLOGICOS (CONDICIONAL MUJERES / TOGGLE MANUAL) */}
+        <div className="sub-panel mb-4">
+          <div className="panel-title-row">
+            <h3 className="panel-title">Antecedentes Gineco-Obstétricos</h3>
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+              <label className="checkbox-label" style={{ fontSize: '0.82rem' }}>
+                <input
+                  type="checkbox"
+                  checked={showGynecology}
+                  onChange={(e) => {
+                    setManualGynecoToggle(e.target.checked);
+                    updateForm({
+                      gynecologicalHistory: {
+                        ...(formData.gynecologicalHistory || {
+                          gravidity: '',
+                          parity: '',
+                          abortions: '',
+                          livingChildren: '',
+                          lastMenstrualPeriod: '',
+                          cycleType: 'R',
+                          cycleDuration: '28',
+                          isFamilyPlanning: false,
+                          familyPlanningMethod: ''
+                        }),
+                        applicable: e.target.checked
+                      }
+                    });
+                  }}
+                />
+                {isFemale ? 'Aplica antecedentes ginecológicos' : 'Forzar despliegue de antecedentes ginecológicos'}
+              </label>
+            </div>
+          </div>
+
+          {showGynecology ? (
+            <div className="animate-slide-down mt-2">
+              <div className="form-grid-4">
+                <div className="form-group">
+                  <label className="form-sublabel">G (Gestaciones)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    className="form-input"
+                    placeholder="G"
+                    value={formData.gynecologicalHistory?.gravidity ?? ''}
+                    onChange={(e) => {
+                      updateForm({
+                        gynecologicalHistory: {
+                          ...formData.gynecologicalHistory,
+                          applicable: true,
+                          gravidity: e.target.value === '' ? '' : parseInt(e.target.value, 10),
+                          parity: formData.gynecologicalHistory?.parity ?? '',
+                          abortions: formData.gynecologicalHistory?.abortions ?? '',
+                          livingChildren: formData.gynecologicalHistory?.livingChildren ?? '',
+                          lastMenstrualPeriod: formData.gynecologicalHistory?.lastMenstrualPeriod ?? '',
+                          cycleType: formData.gynecologicalHistory?.cycleType ?? 'R',
+                          cycleDuration: formData.gynecologicalHistory?.cycleDuration ?? '',
+                          isFamilyPlanning: formData.gynecologicalHistory?.isFamilyPlanning ?? false,
+                          familyPlanningMethod: formData.gynecologicalHistory?.familyPlanningMethod ?? ''
+                        }
+                      });
+                    }}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-sublabel">P (Partos)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    className="form-input"
+                    placeholder="P"
+                    value={formData.gynecologicalHistory?.parity ?? ''}
+                    onChange={(e) => {
+                      updateForm({
+                        gynecologicalHistory: {
+                          ...formData.gynecologicalHistory,
+                          applicable: true,
+                          gravidity: formData.gynecologicalHistory?.gravidity ?? '',
+                          parity: e.target.value === '' ? '' : parseInt(e.target.value, 10),
+                          abortions: formData.gynecologicalHistory?.abortions ?? '',
+                          livingChildren: formData.gynecologicalHistory?.livingChildren ?? '',
+                          lastMenstrualPeriod: formData.gynecologicalHistory?.lastMenstrualPeriod ?? '',
+                          cycleType: formData.gynecologicalHistory?.cycleType ?? 'R',
+                          cycleDuration: formData.gynecologicalHistory?.cycleDuration ?? '',
+                          isFamilyPlanning: formData.gynecologicalHistory?.isFamilyPlanning ?? false,
+                          familyPlanningMethod: formData.gynecologicalHistory?.familyPlanningMethod ?? ''
+                        }
+                      });
+                    }}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-sublabel">A (Abortos)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    className="form-input"
+                    placeholder="A"
+                    value={formData.gynecologicalHistory?.abortions ?? ''}
+                    onChange={(e) => {
+                      updateForm({
+                        gynecologicalHistory: {
+                          ...formData.gynecologicalHistory,
+                          applicable: true,
+                          gravidity: formData.gynecologicalHistory?.gravidity ?? '',
+                          parity: formData.gynecologicalHistory?.parity ?? '',
+                          abortions: e.target.value === '' ? '' : parseInt(e.target.value, 10),
+                          livingChildren: formData.gynecologicalHistory?.livingChildren ?? '',
+                          lastMenstrualPeriod: formData.gynecologicalHistory?.lastMenstrualPeriod ?? '',
+                          cycleType: formData.gynecologicalHistory?.cycleType ?? 'R',
+                          cycleDuration: formData.gynecologicalHistory?.cycleDuration ?? '',
+                          isFamilyPlanning: formData.gynecologicalHistory?.isFamilyPlanning ?? false,
+                          familyPlanningMethod: formData.gynecologicalHistory?.familyPlanningMethod ?? ''
+                        }
+                      });
+                    }}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-sublabel">V (Hijos Vivos)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    className="form-input"
+                    placeholder="V"
+                    value={formData.gynecologicalHistory?.livingChildren ?? ''}
+                    onChange={(e) => {
+                      updateForm({
+                        gynecologicalHistory: {
+                          ...formData.gynecologicalHistory,
+                          applicable: true,
+                          gravidity: formData.gynecologicalHistory?.gravidity ?? '',
+                          parity: formData.gynecologicalHistory?.parity ?? '',
+                          abortions: formData.gynecologicalHistory?.abortions ?? '',
+                          livingChildren: e.target.value === '' ? '' : parseInt(e.target.value, 10),
+                          lastMenstrualPeriod: formData.gynecologicalHistory?.lastMenstrualPeriod ?? '',
+                          cycleType: formData.gynecologicalHistory?.cycleType ?? 'R',
+                          cycleDuration: formData.gynecologicalHistory?.cycleDuration ?? '',
+                          isFamilyPlanning: formData.gynecologicalHistory?.isFamilyPlanning ?? false,
+                          familyPlanningMethod: formData.gynecologicalHistory?.familyPlanningMethod ?? ''
+                        }
+                      });
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div className="form-grid-3 mt-3">
+                <div className="form-group">
+                  <label className="form-sublabel">Fecha de Última Regla (FUR)</label>
+                  <input
+                    type="date"
+                    className="form-input"
+                    value={formData.gynecologicalHistory?.lastMenstrualPeriod || ''}
+                    onChange={(e) => {
+                      updateForm({
+                        gynecologicalHistory: {
+                          ...(formData.gynecologicalHistory || {
+                            applicable: true,
+                            gravidity: '',
+                            parity: '',
+                            abortions: '',
+                            livingChildren: '',
+                            cycleType: 'R',
+                            cycleDuration: '28',
+                            isFamilyPlanning: false,
+                            familyPlanningMethod: ''
+                          }),
+                          lastMenstrualPeriod: e.target.value
+                        }
+                      });
+                    }}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-sublabel">Ciclos (Regular / Irregular y duración)</label>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <select
+                      className="form-input"
+                      style={{ width: '50%' }}
+                      value={formData.gynecologicalHistory?.cycleType || 'R'}
+                      onChange={(e) => {
+                        updateForm({
+                          gynecologicalHistory: {
+                            ...(formData.gynecologicalHistory || {
+                              applicable: true,
+                              gravidity: '',
+                              parity: '',
+                              abortions: '',
+                              livingChildren: '',
+                              lastMenstrualPeriod: '',
+                              cycleDuration: '28',
+                              isFamilyPlanning: false,
+                              familyPlanningMethod: ''
+                            }),
+                            cycleType: e.target.value as any
+                          }
+                        });
+                      }}
+                    >
+                      <option value="R">R (Regular)</option>
+                      <option value="I">I (Irregular)</option>
+                    </select>
+                    <input
+                      type="text"
+                      className="form-input"
+                      style={{ width: '50%' }}
+                      placeholder="Días (ej. 28)"
+                      value={formData.gynecologicalHistory?.cycleDuration || ''}
+                      onChange={(e) => {
+                        updateForm({
+                          gynecologicalHistory: {
+                            ...(formData.gynecologicalHistory || {
+                              applicable: true,
+                              gravidity: '',
+                              parity: '',
+                              abortions: '',
+                              livingChildren: '',
+                              lastMenstrualPeriod: '',
+                              cycleType: 'R',
+                              isFamilyPlanning: false,
+                              familyPlanningMethod: ''
+                            }),
+                            cycleDuration: e.target.value
+                          }
+                        });
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-sublabel">¿Está planificando?</label>
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <label className="checkbox-label" style={{ whiteSpace: 'nowrap' }}>
+                      <input
+                        type="checkbox"
+                        checked={!!formData.gynecologicalHistory?.isFamilyPlanning}
+                        onChange={(e) => {
+                          updateForm({
+                            gynecologicalHistory: {
+                              ...(formData.gynecologicalHistory || {
+                                applicable: true,
+                                gravidity: '',
+                                parity: '',
+                                abortions: '',
+                                livingChildren: '',
+                                lastMenstrualPeriod: '',
+                                cycleType: 'R',
+                                cycleDuration: '28',
+                                familyPlanningMethod: ''
+                              }),
+                              isFamilyPlanning: e.target.checked
+                            }
+                          });
+                        }}
+                      />
+                      Sí planifica
+                    </label>
+                    {formData.gynecologicalHistory?.isFamilyPlanning && (
+                      <input
+                        type="text"
+                        className="form-input"
+                        placeholder="¿Con qué método? (ej. DIU Mirena, ACO...)"
+                        value={formData.gynecologicalHistory?.familyPlanningMethod || ''}
+                        onChange={(e) => {
+                          updateForm({
+                            gynecologicalHistory: {
+                              ...formData.gynecologicalHistory!,
+                              familyPlanningMethod: e.target.value
+                            }
+                          });
+                        }}
+                      />
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <p style={{ fontSize: '0.85rem', color: '#94a3b8', margin: '0.5rem 0 0 0' }}>
+              No aplica (Paciente masculino o sección desactivada). Active la casilla superior para registrar antecedentes gineco-obstétricos.
+            </p>
+          )}
+        </div>
+
+        {/* 5.4 HABITOS (TABAQUISMO, ALCOHOL, SUSTANCIAS, PAREJAS SEXUALES) */}
+        <div className="sub-panel mb-4">
+          <div className="panel-title-row">
+            <h3 className="panel-title">Hábitos y Factores de Riesgo</h3>
+          </div>
+
+          <div className="form-grid-2">
+            {/* Tabaquismo */}
+            <div style={{ background: '#f8fafc', padding: '0.75rem', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>Tabaquismo</span>
+                <label className="checkbox-label" style={{ margin: 0 }}>
+                  <input
+                    type="checkbox"
+                    checked={!!formData.socialHistory?.tobacco?.uses}
+                    onChange={(e) => {
+                      const curT = formData.socialHistory?.tobacco || { uses: false, frequency: '', productType: '', packYears: '' };
+                      updateForm({
+                        socialHistory: {
+                          ...formData.socialHistory,
+                          tobacco: { ...curT, uses: e.target.checked }
+                        }
+                      });
+                    }}
+                  />
+                  Fumador (+)
+                </label>
+              </div>
+
+              {formData.socialHistory?.tobacco?.uses ? (
+                <div className="form-grid-3 animate-slide-down">
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="¿Qué fuma? (cigarrillo, vape...)"
+                    value={formData.socialHistory?.tobacco?.productType || ''}
+                    onChange={(e) => {
+                      const curT = formData.socialHistory?.tobacco || { uses: true, frequency: '', productType: '', packYears: '' };
+                      updateForm({
+                        socialHistory: {
+                          ...formData.socialHistory,
+                          tobacco: { ...curT, productType: e.target.value }
+                        }
+                      });
+                    }}
+                  />
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="Frecuencia (ej. 10/día)"
+                    value={formData.socialHistory?.tobacco?.frequency || ''}
+                    onChange={(e) => {
+                      const curT = formData.socialHistory?.tobacco || { uses: true, frequency: '', productType: '', packYears: '' };
+                      updateForm({
+                        socialHistory: {
+                          ...formData.socialHistory,
+                          tobacco: { ...curT, frequency: e.target.value }
+                        }
+                      });
+                    }}
+                  />
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="Índice paq/año"
+                    value={formData.socialHistory?.tobacco?.packYears || ''}
+                    onChange={(e) => {
+                      const curT = formData.socialHistory?.tobacco || { uses: true, frequency: '', productType: '', packYears: '' };
+                      updateForm({
+                        socialHistory: {
+                          ...formData.socialHistory,
+                          tobacco: { ...curT, packYears: e.target.value }
+                        }
+                      });
+                    }}
+                  />
+                </div>
+              ) : (
+                <span style={{ fontSize: '0.8rem', color: '#64748b' }}>No fumador (-)</span>
+              )}
+            </div>
+
+            {/* Alcohol */}
+            <div style={{ background: '#f8fafc', padding: '0.75rem', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>Consumo de Alcohol</span>
+                <label className="checkbox-label" style={{ margin: 0 }}>
+                  <input
+                    type="checkbox"
+                    checked={!!formData.socialHistory?.alcohol?.uses}
+                    onChange={(e) => {
+                      const curA = formData.socialHistory?.alcohol || { uses: false, frequency: '', beverageType: '' };
+                      updateForm({
+                        socialHistory: {
+                          ...formData.socialHistory,
+                          alcohol: { ...curA, uses: e.target.checked }
+                        }
+                      });
+                    }}
+                  />
+                  Bebedor (+)
+                </label>
+              </div>
+
+              {formData.socialHistory?.alcohol?.uses ? (
+                <div className="form-grid-2 animate-slide-down">
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="Frecuencia (ej. cada 8 días)"
+                    value={formData.socialHistory?.alcohol?.frequency || ''}
+                    onChange={(e) => {
+                      const curA = formData.socialHistory?.alcohol || { uses: true, frequency: '', beverageType: '' };
+                      updateForm({
+                        socialHistory: {
+                          ...formData.socialHistory,
+                          alcohol: { ...curA, frequency: e.target.value }
+                        }
+                      });
+                    }}
+                  />
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="Tipo de licor (ej. whisky, cerveza)"
+                    value={formData.socialHistory?.alcohol?.beverageType || ''}
+                    onChange={(e) => {
+                      const curA = formData.socialHistory?.alcohol || { uses: true, frequency: '', beverageType: '' };
+                      updateForm({
+                        socialHistory: {
+                          ...formData.socialHistory,
+                          alcohol: { ...curA, beverageType: e.target.value }
+                        }
+                      });
+                    }}
+                  />
+                </div>
+              ) : (
+                <span style={{ fontSize: '0.8rem', color: '#64748b' }}>No bebedor (-)</span>
+              )}
+            </div>
+
+            {/* Sustancias Psicoactivas */}
+            <div style={{ background: '#f8fafc', padding: '0.75rem', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>Sustancias Psicoactivas</span>
+                <label className="checkbox-label" style={{ margin: 0 }}>
+                  <input
+                    type="checkbox"
+                    checked={!!formData.socialHistory?.psychoactive?.uses}
+                    onChange={(e) => {
+                      const curP = formData.socialHistory?.psychoactive || { uses: false, substance: '', frequency: '' };
+                      updateForm({
+                        socialHistory: {
+                          ...formData.socialHistory,
+                          psychoactive: { ...curP, uses: e.target.checked }
+                        }
+                      });
+                    }}
+                  />
+                  Consumo (+)
+                </label>
+              </div>
+
+              {formData.socialHistory?.psychoactive?.uses ? (
+                <div className="form-grid-2 animate-slide-down">
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="¿Cuál sustancia?"
+                    value={formData.socialHistory?.psychoactive?.substance || ''}
+                    onChange={(e) => {
+                      const curP = formData.socialHistory?.psychoactive || { uses: true, substance: '', frequency: '' };
+                      updateForm({
+                        socialHistory: {
+                          ...formData.socialHistory,
+                          psychoactive: { ...curP, substance: e.target.value }
+                        }
+                      });
+                    }}
+                  />
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="Frecuencia de consumo"
+                    value={formData.socialHistory?.psychoactive?.frequency || ''}
+                    onChange={(e) => {
+                      const curP = formData.socialHistory?.psychoactive || { uses: true, substance: '', frequency: '' };
+                      updateForm({
+                        socialHistory: {
+                          ...formData.socialHistory,
+                          psychoactive: { ...curP, frequency: e.target.value }
+                        }
+                      });
+                    }}
+                  />
+                </div>
+              ) : (
+                <span style={{ fontSize: '0.8rem', color: '#64748b' }}>No consumidor (-)</span>
+              )}
+            </div>
+
+            {/* Número de Parejas Sexuales */}
+            <div style={{ background: '#f8fafc', padding: '0.75rem', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+              <span style={{ fontWeight: 600, fontSize: '0.9rem', display: 'block', marginBottom: '0.5rem' }}>
+                Número de Parejas Sexuales
+              </span>
+              <input
+                type="text"
+                className="form-input"
+                placeholder="Ej. 1 pareja estable, o número..."
+                value={formData.socialHistory?.sexualPartnersCount || ''}
+                onChange={(e) => {
+                  updateForm({
+                    socialHistory: {
+                      ...formData.socialHistory,
+                      sexualPartnersCount: e.target.value
+                    }
+                  });
+                }}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* 5.5 ANTECEDENTES FAMILIARES (PADRES, HERMANOS, ABUELOS CON CASILLAS Y DETALLE) */}
+        <div className="sub-panel">
+          <div className="panel-title-row">
+            <h3 className="panel-title">Antecedentes Familiares Hereditarios</h3>
+            <span style={{ fontSize: '0.82rem', color: '#64748b' }}>
+              Enfermedades de relevancia genética en 1er y 2do grado
+            </span>
+          </div>
+
+          <div className="form-grid-3 mt-2">
+            {/* Padres */}
+            <div style={{ background: '#f8fafc', padding: '0.75rem', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+              <h4 style={{ fontWeight: 700, fontSize: '0.9rem', color: '#1e293b', marginBottom: '0.5rem' }}>Padres</h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', marginBottom: '0.5rem' }}>
+                {COMMON_HEREDITARY_DISEASES.map(dis => {
+                  const currentList = formData.familyHistory?.parents?.diseases || [];
+                  const isChecked = currentList.includes(dis);
+                  return (
+                    <label key={dis} className="checkbox-label" style={{ fontSize: '0.8rem' }}>
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={(e) => {
+                          const updated = e.target.checked
+                            ? [...currentList, dis]
+                            : currentList.filter(d => d !== dis);
+                          updateForm({
+                            familyHistory: {
+                              ...formData.familyHistory,
+                              parents: {
+                                ...(formData.familyHistory?.parents || { details: '' }),
+                                diseases: updated
+                              }
+                            }
+                          });
+                        }}
+                      />
+                      {dis}
+                    </label>
+                  );
+                })}
+              </div>
+              <input
+                type="text"
+                className="form-input"
+                placeholder="Detalle (ej. Madre DMNID e HTA)..."
+                value={formData.familyHistory?.parents?.details || ''}
                 onChange={(e) => {
                   updateForm({
                     familyHistory: {
                       ...formData.familyHistory,
-                      details: e.target.value
+                      parents: {
+                        ...(formData.familyHistory?.parents || { diseases: [] }),
+                        details: e.target.value
+                      }
                     }
                   });
                 }}
-                disabled={formData.familyHistory.nonContributory}
-              ></textarea>
-            </div>
-          </div>
-
-          {/* Antecedentes Sociales y Hábitos */}
-          <div className="sub-panel">
-            <div className="panel-title-row">
-              <h3 className="panel-title">Sociales y Hábitos</h3>
-              <label className="checkbox-label">
-                <input
-                  type="checkbox"
-                  checked={formData.socialHistory.nonContributory}
-                  onChange={(e) => {
-                    updateForm({
-                      socialHistory: {
-                        ...formData.socialHistory,
-                        nonContributory: e.target.checked
-                      }
-                    });
-                  }}
-                />
-                No contributorio
-              </label>
-            </div>
-
-            <div className="habits-grid">
-              <label className="checkbox-label">
-                <input
-                  type="checkbox"
-                  checked={formData.socialHistory.etoh}
-                  onChange={(e) => {
-                    updateForm({
-                      socialHistory: {
-                        ...formData.socialHistory,
-                        etoh: e.target.checked
-                      }
-                    });
-                  }}
-                  disabled={formData.socialHistory.nonContributory}
-                />
-                Consumo de Alcohol (ETOH)
-              </label>
-
-              <div className="habit-inline-row">
-                <label className="checkbox-label">
-                  <input
-                    type="checkbox"
-                    checked={formData.socialHistory.tobaccoUse}
-                    onChange={(e) => {
-                      updateForm({
-                        socialHistory: {
-                          ...formData.socialHistory,
-                          tobaccoUse: e.target.checked
-                        }
-                      });
-                    }}
-                    disabled={formData.socialHistory.nonContributory}
-                  />
-                  Tabaquismo
-                </label>
-                {formData.socialHistory.tobaccoUse && (
-                  <input
-                    type="text"
-                    className="form-input mini-input"
-                    placeholder="paq/año"
-                    value={formData.socialHistory.tobaccoPackYears || ''}
-                    onChange={(e) => {
-                      updateForm({
-                        socialHistory: {
-                          ...formData.socialHistory,
-                          tobaccoPackYears: e.target.value
-                        }
-                      });
-                    }}
-                  />
-                )}
-              </div>
-
-              <div className="habit-inline-row">
-                <label className="checkbox-label">
-                  <input
-                    type="checkbox"
-                    checked={formData.socialHistory.ivda}
-                    onChange={(e) => {
-                      updateForm({
-                        socialHistory: {
-                          ...formData.socialHistory,
-                          ivda: e.target.checked
-                        }
-                      });
-                    }}
-                    disabled={formData.socialHistory.nonContributory}
-                  />
-                  Drogas Parenterales (IVDA)
-                </label>
-                {formData.socialHistory.ivda && (
-                  <input
-                    type="text"
-                    className="form-input mini-input"
-                    placeholder="Último consumo"
-                    value={formData.socialHistory.ivdaLastUse || ''}
-                    onChange={(e) => {
-                      updateForm({
-                        socialHistory: {
-                          ...formData.socialHistory,
-                          ivdaLastUse: e.target.value
-                        }
-                      });
-                    }}
-                  />
-                )}
-              </div>
-            </div>
-
-            <div className="form-group mt-3">
-              <label className="form-sublabel">Ocupación</label>
-              <input
-                type="text"
-                className="form-input"
-                placeholder="Ej. Docente jubilado, Ingeniero civil..."
-                value={formData.socialHistory.occupation || ''}
-                onChange={(e) => {
-                  updateForm({
-                    socialHistory: {
-                      ...formData.socialHistory,
-                      occupation: e.target.value
-                    }
-                  });
-                }}
-                disabled={formData.socialHistory.nonContributory}
               />
             </div>
 
-            <div className="form-group mt-2">
-              <label className="form-sublabel">Situación Habitacional / Red de Apoyo</label>
+            {/* Hermanos */}
+            <div style={{ background: '#f8fafc', padding: '0.75rem', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+              <h4 style={{ fontWeight: 700, fontSize: '0.9rem', color: '#1e293b', marginBottom: '0.5rem' }}>Hermanos</h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', marginBottom: '0.5rem' }}>
+                {COMMON_HEREDITARY_DISEASES.map(dis => {
+                  const currentList = formData.familyHistory?.siblings?.diseases || [];
+                  const isChecked = currentList.includes(dis);
+                  return (
+                    <label key={dis} className="checkbox-label" style={{ fontSize: '0.8rem' }}>
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={(e) => {
+                          const updated = e.target.checked
+                            ? [...currentList, dis]
+                            : currentList.filter(d => d !== dis);
+                          updateForm({
+                            familyHistory: {
+                              ...formData.familyHistory,
+                              siblings: {
+                                ...(formData.familyHistory?.siblings || { details: '' }),
+                                diseases: updated
+                              }
+                            }
+                          });
+                        }}
+                      />
+                      {dis}
+                    </label>
+                  );
+                })}
+              </div>
               <input
                 type="text"
                 className="form-input"
-                placeholder="Ej. Vive con cónyuge, vivienda urbana con todos los servicios..."
-                value={formData.socialHistory.livingSituation || ''}
+                placeholder="Detalle (ej. Hermano con Asma)..."
+                value={formData.familyHistory?.siblings?.details || ''}
                 onChange={(e) => {
                   updateForm({
-                    socialHistory: {
-                      ...formData.socialHistory,
-                      livingSituation: e.target.value
+                    familyHistory: {
+                      ...formData.familyHistory,
+                      siblings: {
+                        ...(formData.familyHistory?.siblings || { diseases: [] }),
+                        details: e.target.value
+                      }
                     }
                   });
                 }}
-                disabled={formData.socialHistory.nonContributory}
+              />
+            </div>
+
+            {/* Abuelos */}
+            <div style={{ background: '#f8fafc', padding: '0.75rem', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+              <h4 style={{ fontWeight: 700, fontSize: '0.9rem', color: '#1e293b', marginBottom: '0.5rem' }}>Abuelos</h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', marginBottom: '0.5rem' }}>
+                {COMMON_HEREDITARY_DISEASES.map(dis => {
+                  const currentList = formData.familyHistory?.grandparents?.diseases || [];
+                  const isChecked = currentList.includes(dis);
+                  return (
+                    <label key={dis} className="checkbox-label" style={{ fontSize: '0.8rem' }}>
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={(e) => {
+                          const updated = e.target.checked
+                            ? [...currentList, dis]
+                            : currentList.filter(d => d !== dis);
+                          updateForm({
+                            familyHistory: {
+                              ...formData.familyHistory,
+                              grandparents: {
+                                ...(formData.familyHistory?.grandparents || { details: '' }),
+                                diseases: updated
+                              }
+                            }
+                          });
+                        }}
+                      />
+                      {dis}
+                    </label>
+                  );
+                })}
+              </div>
+              <input
+                type="text"
+                className="form-input"
+                placeholder="Detalle (ej. Abuelo paterno con IAM)..."
+                value={formData.familyHistory?.grandparents?.details || ''}
+                onChange={(e) => {
+                  updateForm({
+                    familyHistory: {
+                      ...formData.familyHistory,
+                      grandparents: {
+                        ...(formData.familyHistory?.grandparents || { diseases: [] }),
+                        details: e.target.value
+                      }
+                    }
+                  });
+                }}
               />
             </div>
           </div>

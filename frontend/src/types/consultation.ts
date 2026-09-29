@@ -1,4 +1,4 @@
-export type VisitType = 'initial_visit' | 'consult';
+export type VisitType = 'initial_visit' | 'consult' | 'evolution';
 
 export interface RosSystemEntry {
   normal: boolean;
@@ -25,32 +25,100 @@ export interface ReviewOfSystems {
   immunologic: RosSystemEntry;
 }
 
+export interface FixedPathologies {
+  htaCronica: boolean;
+  hipoTa: boolean;
+  dmnid: boolean;
+  hipoglicemia: boolean;
+  dislipidemia: boolean;
+  problemasTiroides: boolean;
+  asma: boolean;
+  epoc: boolean;
+  erc: boolean;
+  cardiopatiaIsquemica: boolean;
+  obesidad: boolean;
+  cancer: boolean;
+}
+
+export interface TransfusionHistory {
+  hasTransfusions: boolean;
+  bloodType: string;
+  details?: string;
+}
+
 export interface PastMedicalSurgicalHistory {
   unableToObtain: boolean;
   unableReason?: string;
   nonContributory: boolean;
-  conditions: string[];
+  fixedPathologies: FixedPathologies;
+  conditions: string[]; // Otros antecedentes patológicos
   surgicalHistory: string;
+  toxicHistory: string;
+  traumaticHistory: string;
+  hospitalHistory: string;
+  transfusionHistory: TransfusionHistory;
+  pharmacologicalHistory: string;
+}
+
+export interface FamilyHistoryGroup {
+  diseases: string[];
+  details: string;
 }
 
 export interface FamilyHistory {
   unableToObtain: boolean;
   nonContributory: boolean;
-  details: string;
+  parents: FamilyHistoryGroup;
+  siblings: FamilyHistoryGroup;
+  grandparents: FamilyHistoryGroup;
+  details?: string;
+}
+
+export interface TobaccoHabit {
+  uses: boolean;
+  frequency: string;
+  productType: string;
+  packYears: string;
+}
+
+export interface AlcoholHabit {
+  uses: boolean;
+  frequency: string;
+  beverageType: string;
+}
+
+export interface PsychoactiveHabit {
+  uses: boolean;
+  substance: string;
+  frequency: string;
 }
 
 export interface SocialHistory {
   unableToObtain: boolean;
   nonContributory: boolean;
-  etoh: boolean;
-  etohDetails?: string;
-  tobaccoUse: boolean;
-  tobaccoPackYears?: string;
-  ivda: boolean;
-  ivdaLastUse?: string;
+  tobacco: TobaccoHabit;
+  alcohol: AlcoholHabit;
+  psychoactive: PsychoactiveHabit;
+  sexualPartnersCount: string;
+  etoh?: boolean;
+  tobaccoUse?: boolean;
+  ivda?: boolean;
   occupation?: string;
   livingSituation?: string;
   otherNotes?: string;
+}
+
+export interface GynecologicalHistory {
+  applicable: boolean;
+  gravidity: number | '';
+  parity: number | '';
+  abortions: number | '';
+  livingChildren: number | '';
+  lastMenstrualPeriod: string;
+  cycleType: 'R' | 'I' | '';
+  cycleDuration: string;
+  isFamilyPlanning: boolean;
+  familyPlanningMethod: string;
 }
 
 export interface VitalSigns {
@@ -169,10 +237,21 @@ export interface PhysicalExamSystems {
   abnormalFindingsSummary?: string;
 }
 
+export interface RequestedExam {
+  testName: string;
+  testCode?: string;
+  notes?: string;
+}
+
 export interface InpatientConsultation {
   id?: string;
   patientName: string;
   patientIdNumber?: string;
+  age?: string;
+  biologicalSex?: 'M' | 'F';
+  entity?: string;
+  originCity?: string;
+  occupation?: string;
   date: string;
   time: string;
   visitType: VisitType;
@@ -203,8 +282,9 @@ export interface InpatientConsultation {
   // Revision por Sistemas (ROS)
   reviewOfSystems: ReviewOfSystems;
 
-  // Antecedentes
+  // Antecedentes fusionados
   pastMedicalSurgical: PastMedicalSurgicalHistory;
+  gynecologicalHistory?: GynecologicalHistory;
   familyHistory: FamilyHistory;
   socialHistory: SocialHistory;
 
@@ -214,6 +294,7 @@ export interface InpatientConsultation {
   // Datos y Plan
   dataReview: string;
   diagnosesList: string[];
+  requestedExams?: RequestedExam[];
   assessmentPlan: string;
   residentSignature: string;
   residentDate: string;
@@ -223,9 +304,52 @@ export interface InpatientConsultation {
   updatedAt?: string;
 }
 
+export interface LaboratoryResultEntry {
+  testName: string;
+  testCode?: string;
+  result: string;
+  unit?: string;
+  reference?: string;
+}
+
+export interface MedicalEvolution {
+  id?: string;
+  patientName: string;
+  patientIdNumber?: string;
+  age?: string;
+  biologicalSex?: 'M' | 'F';
+  entity?: string;
+  date: string;
+  time: string;
+  visitType: 'evolution';
+  
+  // Impresión Diagnóstica Priorizada (1, 2, 3...)
+  diagnosticImpressions: string[];
+
+  // Formato SOAP
+  subjective: string; // S: Sintomas, mejoria, adherencia farmacologica
+  objective: {
+    vitals: VitalSigns;
+    physicalExamNarrative: string;
+    laboratoryResults: LaboratoryResultEntry[];
+  }; // O: Examen fisico y laboratorios traidos
+  analysis: string; // A: Juicio clinico
+  plan: {
+    medicalConduct: string;
+    prescriptions: { drug: string; dose: string; instructions: string }[];
+    requestedExams: RequestedExam[];
+    nextControl?: string;
+    referrals?: string;
+  }; // P: Conducta, recetas, solicitudes paraclínicos
+
+  attendingDoctorSignature: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface CatalogItem {
   id: string;
-  category: 'alergia' | 'medicamento' | 'diagnostico' | 'motivo_consulta' | 'antecedente' | 'hallazgo_examen';
+  category: 'alergia' | 'medicamento' | 'diagnostico' | 'motivo_consulta' | 'antecedente' | 'hallazgo_examen' | 'examen';
   code?: string;
   name: string;
   description?: string;
